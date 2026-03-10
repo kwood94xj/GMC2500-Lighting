@@ -1,26 +1,99 @@
 #include "settings_manager.h"
-    snprintf(key, sizeof(key), "s%u_nr_r", i); strips[i].cfg.nr.color.r = prefs_.getUChar(key, strips[i].cfg.nr.color.r);
-    snprintf(key, sizeof(key), "s%u_nr_g", i); strips[i].cfg.nr.color.g = prefs_.getUChar(key, strips[i].cfg.nr.color.g);
-    snprintf(key, sizeof(key), "s%u_nr_b", i); strips[i].cfg.nr.color.b = prefs_.getUChar(key, strips[i].cfg.nr.color.b);
-    snprintf(key, sizeof(key), "s%u_nr_s", i); strips[i].cfg.nr.stepMs = prefs_.getUShort(key, strips[i].cfg.nr.stepMs);
-    snprintf(key, sizeof(key), "s%u_nr_w", i); strips[i].cfg.nr.width = prefs_.getUChar(key, strips[i].cfg.nr.width);
-    snprintf(key, sizeof(key), "s%u_nr_t", i); strips[i].cfg.nr.tail = prefs_.getUChar(key, strips[i].cfg.nr.tail);
-    snprintf(key, sizeof(key), "s%u_nr_bnc", i); strips[i].cfg.nr.bounce = prefs_.getBool(key, strips[i].cfg.nr.bounce);
-    snprintf(key, sizeof(key), "s%u_mf_f", i); strips[i].cfg.mf.flashes = prefs_.getUChar(key, strips[i].cfg.mf.flashes);
-    snprintf(key, sizeof(key), "s%u_mf_on", i); strips[i].cfg.mf.onMs = prefs_.getUShort(key, strips[i].cfg.mf.onMs);
-    snprintf(key, sizeof(key), "s%u_mf_off", i); strips[i].cfg.mf.offMs = prefs_.getUShort(key, strips[i].cfg.mf.offMs);
-    snprintf(key, sizeof(key), "s%u_mf_gap", i); strips[i].cfg.mf.gapMs = prefs_.getUShort(key, strips[i].cfg.mf.gapMs);
-    snprintf(key, sizeof(key), "s%u_mf_alt", i); strips[i].cfg.mf.alternate = prefs_.getBool(key, strips[i].cfg.mf.alternate);
-    snprintf(key, sizeof(key), "s%u_mf_a_r", i); strips[i].cfg.mf.colorA.r = prefs_.getUChar(key, strips[i].cfg.mf.colorA.r);
-    snprintf(key, sizeof(key), "s%u_mf_a_g", i); strips[i].cfg.mf.colorA.g = prefs_.getUChar(key, strips[i].cfg.mf.colorA.g);
-    snprintf(key, sizeof(key), "s%u_mf_a_b", i); strips[i].cfg.mf.colorA.b = prefs_.getUChar(key, strips[i].cfg.mf.colorA.b);
-    snprintf(key, sizeof(key), "s%u_mf_b_r", i); strips[i].cfg.mf.colorB.r = prefs_.getUChar(key, strips[i].cfg.mf.colorB.r);
-    snprintf(key, sizeof(key), "s%u_mf_b_g", i); strips[i].cfg.mf.colorB.g = prefs_.getUChar(key, strips[i].cfg.mf.colorB.g);
-    snprintf(key, sizeof(key), "s%u_mf_b_b", i); strips[i].cfg.mf.colorB.b = prefs_.getUChar(key, strips[i].cfg.mf.colorB.b);
+
+static const char* NS = "gmc2500";
+
+/*
+  Initialize Preferences namespace.
+*/
+bool SettingsManager::begin()
+{
+  return prefs_.begin(NS, false);
+}
+
+/*
+  Load configuration from NVS into runtime structures.
+*/
+void SettingsManager::load(
+  StripRuntime* strips,
+  app::RoleMapCfg& roleCfg,
+  app::GlobalLightingCfg& lightingCfg,
+  app::ProtectionCfg& protectionCfg)
+{
+  roleCfg.runningMask = prefs_.getUChar("runMask", roleCfg.runningMask);
+  roleCfg.leftMask = prefs_.getUChar("leftMask", roleCfg.leftMask);
+  roleCfg.rightMask = prefs_.getUChar("rightMask", roleCfg.rightMask);
+  roleCfg.hazardMask = prefs_.getUChar("hazMask", roleCfg.hazardMask);
+  roleCfg.hazardMode =
+    static_cast<app::HazardMode>(
+      prefs_.getUChar("hazMode", static_cast<uint8_t>(roleCfg.hazardMode)));
+
+  lightingCfg.dayBrightness =
+    prefs_.getUChar("dayBri", lightingCfg.dayBrightness);
+
+  lightingCfg.nightBrightness =
+    prefs_.getUChar("nightBri", lightingCfg.nightBrightness);
+
+  lightingCfg.autoDimHeadlights =
+    prefs_.getBool("autoDim", lightingCfg.autoDimHeadlights);
+
+  protectionCfg.maxCurrentA =
+    prefs_.getFloat("maxCur", protectionCfg.maxCurrentA);
+
+  protectionCfg.thermalDerateC =
+    prefs_.getFloat("thermDer", protectionCfg.thermalDerateC);
+
+  protectionCfg.thermalShutdownC =
+    prefs_.getFloat("thermShut", protectionCfg.thermalShutdownC);
+
+  for (uint8_t i = 0; i < app::STRIP_COUNT; ++i)
+  {
+    char key[24];
+
+    snprintf(key, sizeof(key), "s%u_len", i);
+    strips[i].cfg.len = prefs_.getUShort(key, strips[i].cfg.len);
+
+    snprintf(key, sizeof(key), "s%u_mode", i);
+    strips[i].cfg.mode =
+      static_cast<app::PatternMode>(
+        prefs_.getUChar(key, static_cast<uint8_t>(strips[i].cfg.mode)));
+
+    snprintf(key, sizeof(key), "s%u_rev", i);
+    strips[i].cfg.seqReverse = prefs_.getBool(key, strips[i].cfg.seqReverse);
+
+    snprintf(key, sizeof(key), "s%u_br", i);
+    strips[i].cfg.baseColor.r = prefs_.getUChar(key, strips[i].cfg.baseColor.r);
+
+    snprintf(key, sizeof(key), "s%u_bg", i);
+    strips[i].cfg.baseColor.g = prefs_.getUChar(key, strips[i].cfg.baseColor.g);
+
+    snprintf(key, sizeof(key), "s%u_bb", i);
+    strips[i].cfg.baseColor.b = prefs_.getUChar(key, strips[i].cfg.baseColor.b);
+
+    snprintf(key, sizeof(key), "s%u_sr", i);
+    strips[i].cfg.solidColor.r = prefs_.getUChar(key, strips[i].cfg.solidColor.r);
+
+    snprintf(key, sizeof(key), "s%u_sg", i);
+    strips[i].cfg.solidColor.g = prefs_.getUChar(key, strips[i].cfg.solidColor.g);
+
+    snprintf(key, sizeof(key), "s%u_sb", i);
+    strips[i].cfg.solidColor.b = prefs_.getUChar(key, strips[i].cfg.solidColor.b);
+
+    snprintf(key, sizeof(key), "s%u_tr", i);
+    strips[i].cfg.turnColor.r = prefs_.getUChar(key, strips[i].cfg.turnColor.r);
+
+    snprintf(key, sizeof(key), "s%u_tg", i);
+    strips[i].cfg.turnColor.g = prefs_.getUChar(key, strips[i].cfg.turnColor.g);
+
+    snprintf(key, sizeof(key), "s%u_tb", i);
+    strips[i].cfg.turnColor.b = prefs_.getUChar(key, strips[i].cfg.turnColor.b);
   }
 }
 
-void SettingsManager::saveRoleMap(const app::RoleMapCfg& roleCfg) {
+/*
+  Save role mapping configuration.
+*/
+void SettingsManager::saveRoleMap(const app::RoleMapCfg& roleCfg)
+{
   prefs_.putUChar("runMask", roleCfg.runningMask);
   prefs_.putUChar("leftMask", roleCfg.leftMask);
   prefs_.putUChar("rightMask", roleCfg.rightMask);
@@ -28,50 +101,77 @@ void SettingsManager::saveRoleMap(const app::RoleMapCfg& roleCfg) {
   prefs_.putUChar("hazMode", static_cast<uint8_t>(roleCfg.hazardMode));
 }
 
-void SettingsManager::saveLighting(const app::GlobalLightingCfg& lightingCfg) {
+/*
+  Save global lighting configuration.
+*/
+void SettingsManager::saveLighting(const app::GlobalLightingCfg& lightingCfg)
+{
   prefs_.putUChar("dayBri", lightingCfg.dayBrightness);
   prefs_.putUChar("nightBri", lightingCfg.nightBrightness);
   prefs_.putBool("autoDim", lightingCfg.autoDimHeadlights);
 }
 
-void SettingsManager::saveProtection(const app::ProtectionCfg& protectionCfg) {
+/*
+  Save protection configuration.
+*/
+void SettingsManager::saveProtection(const app::ProtectionCfg& protectionCfg)
+{
   prefs_.putFloat("maxCur", protectionCfg.maxCurrentA);
   prefs_.putFloat("thermDer", protectionCfg.thermalDerateC);
   prefs_.putFloat("thermShut", protectionCfg.thermalShutdownC);
 }
 
-void SettingsManager::saveStrip(uint8_t id, const app::StripConfig& cfg) {
-  char key[20];
-  snprintf(key, sizeof(key), "s%u_len", id); prefs_.putUShort(key, cfg.len);
-  snprintf(key, sizeof(key), "s%u_mode", id); prefs_.putUChar(key, static_cast<uint8_t>(cfg.mode));
-  snprintf(key, sizeof(key), "s%u_rev", id); prefs_.putBool(key, cfg.seqReverse);
-  snprintf(key, sizeof(key), "s%u_br", id); prefs_.putUChar(key, cfg.baseColor.r);
-  snprintf(key, sizeof(key), "s%u_bg", id); prefs_.putUChar(key, cfg.baseColor.g);
-  snprintf(key, sizeof(key), "s%u_bb", id); prefs_.putUChar(key, cfg.baseColor.b);
-  snprintf(key, sizeof(key), "s%u_sr", id); prefs_.putUChar(key, cfg.solidColor.r);
-  snprintf(key, sizeof(key), "s%u_sg", id); prefs_.putUChar(key, cfg.solidColor.g);
-  snprintf(key, sizeof(key), "s%u_sb", id); prefs_.putUChar(key, cfg.solidColor.b);
-  snprintf(key, sizeof(key), "s%u_tr", id); prefs_.putUChar(key, cfg.turnColor.r);
-  snprintf(key, sizeof(key), "s%u_tg", id); prefs_.putUChar(key, cfg.turnColor.g);
-  snprintf(key, sizeof(key), "s%u_tb", id); prefs_.putUChar(key, cfg.turnColor.b);
-  snprintf(key, sizeof(key), "s%u_nr_r", id); prefs_.putUChar(key, cfg.nr.color.r);
-  snprintf(key, sizeof(key), "s%u_nr_g", id); prefs_.putUChar(key, cfg.nr.color.g);
-  snprintf(key, sizeof(key), "s%u_nr_b", id); prefs_.putUChar(key, cfg.nr.color.b);
-  snprintf(key, sizeof(key), "s%u_nr_s", id); prefs_.putUShort(key, cfg.nr.stepMs);
-  snprintf(key, sizeof(key), "s%u_nr_w", id); prefs_.putUChar(key, cfg.nr.width);
-  snprintf(key, sizeof(key), "s%u_nr_t", id); prefs_.putUChar(key, cfg.nr.tail);
-  snprintf(key, sizeof(key), "s%u_nr_bnc", id); prefs_.putBool(key, cfg.nr.bounce);
-  snprintf(key, sizeof(key), "s%u_mf_f", id); prefs_.putUChar(key, cfg.mf.flashes);
-  snprintf(key, sizeof(key), "s%u_mf_on", id); prefs_.putUShort(key, cfg.mf.onMs);
-  snprintf(key, sizeof(key), "s%u_mf_off", id); prefs_.putUShort(key, cfg.mf.offMs);
-  snprintf(key, sizeof(key), "s%u_mf_gap", id); prefs_.putUShort(key, cfg.mf.gapMs);
-  snprintf(key, sizeof(key), "s%u_mf_alt", id); prefs_.putBool(key, cfg.mf.alternate);
-  snprintf(key, sizeof(key), "s%u_mf_a_r", id); prefs_.putUChar(key, cfg.mf.colorA.r);
-  snprintf(key, sizeof(key), "s%u_mf_a_g", id); prefs_.putUChar(key, cfg.mf.colorA.g);
-  snprintf(key, sizeof(key), "s%u_mf_a_b", id); prefs_.putUChar(key, cfg.mf.colorA.b);
-  snprintf(key, sizeof(key), "s%u_mf_b_r", id); prefs_.putUChar(key, cfg.mf.colorB.r);
-  snprintf(key, sizeof(key), "s%u_mf_b_g", id); prefs_.putUChar(key, cfg.mf.colorB.g);
-  snprintf(key, sizeof(key), "s%u_mf_b_b", id); prefs_.putUChar(key, cfg.mf.colorB.b);
+/*
+  Save configuration for one strip.
+*/
+void SettingsManager::saveStrip(uint8_t id, const app::StripConfig& cfg)
+{
+  char key[24];
+
+  snprintf(key, sizeof(key), "s%u_len", id);
+  prefs_.putUShort(key, cfg.len);
+
+  snprintf(key, sizeof(key), "s%u_mode", id);
+  prefs_.putUChar(key, static_cast<uint8_t>(cfg.mode));
+
+  snprintf(key, sizeof(key), "s%u_rev", id);
+  prefs_.putBool(key, cfg.seqReverse);
+
+  snprintf(key, sizeof(key), "s%u_br", id);
+  prefs_.putUChar(key, cfg.baseColor.r);
+
+  snprintf(key, sizeof(key), "s%u_bg", id);
+  prefs_.putUChar(key, cfg.baseColor.g);
+
+  snprintf(key, sizeof(key), "s%u_bb", id);
+  prefs_.putUChar(key, cfg.baseColor.b);
+
+  snprintf(key, sizeof(key), "s%u_sr", id);
+  prefs_.putUChar(key, cfg.solidColor.r);
+
+  snprintf(key, sizeof(key), "s%u_sg", id);
+  prefs_.putUChar(key, cfg.solidColor.g);
+
+  snprintf(key, sizeof(key), "s%u_sb", id);
+  prefs_.putUChar(key, cfg.solidColor.b);
+
+  snprintf(key, sizeof(key), "s%u_tr", id);
+  prefs_.putUChar(key, cfg.turnColor.r);
+
+  snprintf(key, sizeof(key), "s%u_tg", id);
+  prefs_.putUChar(key, cfg.turnColor.g);
+
+  snprintf(key, sizeof(key), "s%u_tb", id);
+  prefs_.putUChar(key, cfg.turnColor.b);
 }
 
-void SettingsManager::saveAllStrips(StripRuntime* strips) { for (uint8_t i = 0; i < app::STRIP_COUNT; ++i) saveStrip(i, strips[i].cfg); }
+/*
+  Save configuration for all strips.
+*/
+void SettingsManager::saveAllStrips(StripRuntime* strips)
+{
+  for (uint8_t i = 0; i < app::STRIP_COUNT; ++i)
+  {
+    saveStrip(i, strips[i].cfg);
+  }
+}
