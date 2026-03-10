@@ -1,1 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GMC2500 Lighting Dashboard</title>
 
+<style>
+:root{
+--bg:#0b1020;
+--panel:#151d35;
+--panel2:#1c2747;
+--text:#e9eefc;
+--muted:#aab6da;
+--border:#2a3760;
+}
+
+body{
+margin:0;
+background:linear-gradient(180deg,#09101f,#111935);
+color:var(--text);
+font-family:Segoe UI,Arial;
+}
+
+.wrap{
+max-width:1300px;
+margin:auto;
+padding:20px;
+}
+
+.panel{
+background:var(--panel);
+border:1px solid var(--border);
+border-radius:16px;
+padding:16px;
+margin-bottom:16px;
+}
+
+.grid{
+display:grid;
+gap:16px;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+}
+
+.metric{
+display:flex;
+justify-content:space-between;
+padding:8px 0;
+}
+
+button{
+background:#2c5fcc;
+border:none;
+color:white;
+padding:10px 16px;
+border-radius:8px;
+cursor:pointer;
+}
+
+button.danger{
+background:#a83030;
+}
+
+.preview-bar{
+height:16px;
+background:#0f1730;
+border-radius:10px;
+overflow:hidden;
+}
+
+.preview-fill{
+height:100%;
+background:#4da6ff;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="wrap">
+
+<h1>GMC2500 Lighting Dashboard</h1>
+
+<div class="grid">
+
+<div class="panel">
+<h3>Diagnostics</h3>
+
+<div class="metric"><span>Current</span><span id="current">0</span></div>
+<div class="metric"><span>Temperature</span><span id="temp">0</span></div>
+<div class="metric"><span>Ignition</span><span id="ign">OFF</span></div>
+<div class="metric"><span>Brightness</span><span id="brightness">0</span></div>
+
+</div>
+
+<div class="panel">
+
+<h3>Lighting</h3>
+
+<label>Day Brightness</label>
+<input type="range" id="dayBrightness" min="0" max="255">
+
+<label>Night Brightness</label>
+<input type="range" id="nightBrightness" min="0" max="255">
+
+<button onclick="saveLighting()">Save</button>
+
+</div>
+
+</div>
+<div class="panel">
+
+<h2>Strip Status</h2>
+
+<div id="strips"></div>
+
+</div>
+
+<div class="panel">
+
+<h2>Test Control</h2>
+
+<select id="testMode">
+<option value="1">One Solid</option>
+<option value="2">All Solid</option>
+<option value="3">Chase</option>
+</select>
+
+<select id="testStrip">
+<option value="0">L Grille</option>
+<option value="1">R Grille</option>
+<option value="2">L Board</option>
+<option value="3">R Board</option>
+<option value="4">L Tail</option>
+<option value="5">R Tail</option>
+</select>
+
+<input type="color" id="testColor">
+
+<input type="range" id="testBrightness" min="0" max="255">
+
+<button onclick="startTest()">Start</button>
+<button class="danger" onclick="stopTest()">Stop</button>
+
+</div>  
+<script>
+
+const stripNames=[
+"L Grille",
+"R Grille",
+"L Board",
+"R Board",
+"L Tail",
+"R Tail"
+];
+
+function createStrips(){
+
+let container=document.getElementById("strips")
+
+for(let i=0;i<6;i++){
+
+let div=document.createElement("div")
+
+div.innerHTML=
+"<h4>"+stripNames[i]+"</h4>"+
+"<div class='preview-bar'><div id='bar"+i+"' class='preview-fill'></div></div>"
+
+container.appendChild(div)
+
+}
+
+}
+
+async function apiGet(url){
+
+let r=await fetch(url)
+
+return await r.json()
+
+}
+
+async function apiPost(url,data){
+
+let body=new URLSearchParams()
+
+for(let k in data) body.append(k,data[k])
+
+await fetch(url,{
+method:"POST",
+headers:{"Content-Type":"application/x-www-form-urlencoded"},
+body:body
+})
+
+}
+
+function updateDiag(d){
+
+document.getElementById("current").innerText=d.currentA.toFixed(2)
+document.getElementById("temp").innerText=d.tempC.toFixed(1)
+document.getElementById("ign").innerText=d.ignitionOn?"ON":"OFF"
+document.getElementById("brightness").innerText=d.brightness
+
+}
+
+async function refresh(){
+
+try{
+
+let diag=await apiGet("/diag")
+
+updateDiag(diag)
+
+}catch(e){}
+
+}
+
+async function loadConfig(){
+
+let cfg=await apiGet("/config")
+
+document.getElementById("dayBrightness").value=cfg.lighting.dayBrightness
+document.getElementById("nightBrightness").value=cfg.lighting.nightBrightness
+
+}
+
+async function saveLighting(){
+
+await apiPost("/lighting",{
+dayBrightness:document.getElementById("dayBrightness").value,
+nightBrightness:document.getElementById("nightBrightness").value
+})
+
+}
+
+async function startTest(){
+
+let color=document.getElementById("testColor").value
+
+let r=parseInt(color.substr(1,2),16)
+let g=parseInt(color.substr(3,2),16)
+let b=parseInt(color.substr(5,2),16)
+
+await apiPost("/test",{
+mode:testMode.value,
+strip:testStrip.value,
+r:r,
+g:g,
+b:b,
+brightness:testBrightness.value
+})
+
+}
+
+async function stopTest(){
+
+await apiPost("/testoff",{})
+
+}
+
+createStrips()
+
+loadConfig()
+
+setInterval(refresh,1000)
+
+</script>
+
+</body>
+</html>
